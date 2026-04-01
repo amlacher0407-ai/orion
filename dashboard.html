@@ -506,7 +506,6 @@
           <thead>
             <tr>
               <th>Market</th>
-              <th>Direction</th>
               <th>Entry Price</th>
               <th>PnL</th>
               <th>Status</th>
@@ -515,7 +514,7 @@
           </thead>
           <tbody id="trades-tbody">
             <tr>
-              <td colspan="6">
+              <td colspan="5">
                 <div class="table-empty">
                   <i class="fa-solid fa-circle-notch fa-spin"></i>
                   <p>Loading trades…</p>
@@ -676,7 +675,7 @@ async function fetchTrades() {
     document.getElementById('trade-count').textContent = `${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
 
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><i class="fa-solid fa-inbox"></i><p>No trades yet</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-inbox"></i><p>No trades yet</p></div></td></tr>`;
       return;
     }
 
@@ -694,13 +693,13 @@ async function fetchTrades() {
 
       const entry   = t.entry_price != null ? parseFloat(t.entry_price).toFixed(3) : '--';
 
-      const date    = t.date || t.created_at || t.timestamp || '';
-      const dateStr = date ? new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' }) : '--';
+      const rawDate = t.created_at || t.date || t.timestamp || '';
+      const dateObj = rawDate ? new Date(typeof rawDate === 'number' || /^\d+$/.test(rawDate) ? rawDate * 1000 : rawDate) : null;
+      const dateStr = dateObj ? dateObj.toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' }) : '--';
 
       return `
         <tr>
-          <td class="td-market" title="${escHtml(t.market || '')}">${escHtml(t.market || '--')}</td>
-          <td><span class="badge ${dirCls}">${dir || '--'}</span></td>
+          <td class="td-market"><span class="badge ${dirCls}">${dir || '--'}</span></td>
           <td>${entry}</td>
           <td class="${pnlCls}">${pnlText}</td>
           <td><span class="badge ${statusCls}">${statusTxt}</span></td>
@@ -709,7 +708,7 @@ async function fetchTrades() {
     }).join('');
 
   } catch {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load trades</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="table-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Could not load trades</p></div></td></tr>`;
   }
 }
 
