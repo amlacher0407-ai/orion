@@ -820,7 +820,7 @@ function updateDonut(winRate, closedTrades) {
 }
 
 /* ═══ AUTH GUARD ═════════════════════════════════════════════════ */
-const BASE = 'https://franchise-cut-collectables-likely.trycloudflare.com';
+const BASE = 'https://submissions-reuters-saturday-mating.trycloudflare.com';
 
 function logout() {
   localStorage.removeItem('token');
@@ -964,8 +964,9 @@ function renderExtremesList(elId, trades, isWin) {
     const pnl    = parseFloat(t.pnl);
     const pnlTxt = isWin ? '+$' + pnl.toFixed(2) : '-$' + Math.abs(pnl).toFixed(2);
     const cls    = isWin ? 'pnl-pos' : 'pnl-neg';
+    const label  = (t.market_title && t.market_title.trim()) ? t.market_title : (t.direction || t.market || '--');
     return `<div class="extreme-row">
-      <span class="extreme-market">${escHtml(t.market || '--')}</span>
+      <span class="extreme-market">${escHtml(label)}</span>
       <span class="extreme-pnl ${cls}">${pnlTxt}</span>
     </div>`;
   }).join('');
