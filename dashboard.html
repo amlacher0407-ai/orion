@@ -576,8 +576,6 @@
 })();
 
 /* ═══ CHART ══════════════════════════════════════════════════════ */
-const PLACEHOLDER_PNL = [0, 1.2, 0.8, 2.1, 1.5, 3.2, 2.8, 4.1, 3.5, -9.07];
-
 const pnlCtx = document.getElementById('pnl-chart').getContext('2d');
 
 const gradient = pnlCtx.createLinearGradient(0, 0, 0, 280);
@@ -588,10 +586,10 @@ gradient.addColorStop(1,   'rgba(0,255,136,0)');
 const pnlChart = new Chart(pnlCtx, {
   type: 'line',
   data: {
-    labels: PLACEHOLDER_PNL.map((_, i) => `T${i + 1}`),
+    labels: [],
     datasets: [{
       label: 'PnL ($)',
-      data: PLACEHOLDER_PNL,
+      data: [],
       borderColor: '#00ff88',
       borderWidth: 2.5,
       pointBackgroundColor: '#00ff88',
@@ -640,7 +638,7 @@ const pnlChart = new Chart(pnlCtx, {
 });
 
 /* ═══ API ════════════════════════════════════════════════════════ */
-const BASE = 'https://oriented-structures-amd-wrapping.trycloudflare.com';
+const BASE = 'https://commissioners-volunteer-jenny-retained.trycloudflare.com';
 
 async function fetchStats() {
   try {
@@ -716,7 +714,28 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function refresh() { fetchStats(); fetchTrades(); }
+async function fetchPnlHistory() {
+  try {
+    const res = await fetch(`${BASE}/api/pnl-history`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+
+    const filtered = data.filter((_, i) => i % 30 === 0);
+    const labels   = filtered.map(d => {
+      const dt = new Date(d.date * 1000);
+      return String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0');
+    });
+    const values = filtered.map(d => d.cumulative_pnl);
+
+    pnlChart.data.labels   = labels;
+    pnlChart.data.datasets[0].data = values;
+    pnlChart.update();
+  } catch {
+    // keep chart as-is on error
+  }
+}
+
+function refresh() { fetchStats(); fetchTrades(); fetchPnlHistory(); }
 
 refresh();
 setInterval(refresh, 60_000);
