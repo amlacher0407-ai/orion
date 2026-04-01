@@ -471,6 +471,16 @@
       justify-content: center;
     }
 
+    .auth-msg {
+      font-size: .82rem;
+      font-weight: 500;
+      padding: .6rem .85rem;
+      border-radius: 8px;
+      margin-bottom: .75rem;
+    }
+    .auth-msg-error   { background: rgba(255,77,106,.1);  color: #ff4d6a; border: 1px solid rgba(255,77,106,.25); }
+    .auth-msg-success { background: rgba(0,255,136,.1);   color: #00ff88; border: 1px solid rgba(0,255,136,.25); }
+
     .auth-back {
       display: block;
       text-align: center;
@@ -611,56 +621,59 @@
     </div>
 
     <!-- LOGIN FORM -->
-    <form class="auth-form active" id="form-login" onsubmit="handleSubmit(event)">
+    <form class="auth-form active" id="form-login" onsubmit="handleLogin(event)">
       <div class="form-group">
         <label>Email</label>
         <div class="input-wrap">
-          <input type="email" placeholder="you@example.com" required />
+          <input id="login-email" type="email" placeholder="you@example.com" required />
           <i class="fa-solid fa-envelope"></i>
         </div>
       </div>
       <div class="form-group">
         <label>Password</label>
         <div class="input-wrap">
-          <input type="password" placeholder="••••••••" required />
+          <input id="login-password" type="password" placeholder="••••••••" required />
           <i class="fa-solid fa-lock"></i>
         </div>
       </div>
+      <div id="login-error" class="auth-msg auth-msg-error" style="display:none"></div>
       <button type="submit" class="btn btn-primary btn-auth">
         <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
       </button>
     </form>
 
     <!-- REGISTER FORM -->
-    <form class="auth-form" id="form-register" onsubmit="handleSubmit(event)">
+    <form class="auth-form" id="form-register" onsubmit="handleRegister(event)">
       <div class="form-group">
         <label>Username</label>
         <div class="input-wrap">
-          <input type="text" placeholder="tradingwizard" required />
+          <input id="reg-username" type="text" placeholder="tradingwizard" required />
           <i class="fa-solid fa-user"></i>
         </div>
       </div>
       <div class="form-group">
         <label>Email</label>
         <div class="input-wrap">
-          <input type="email" placeholder="you@example.com" required />
+          <input id="reg-email" type="email" placeholder="you@example.com" required />
           <i class="fa-solid fa-envelope"></i>
         </div>
       </div>
       <div class="form-group">
         <label>Password</label>
         <div class="input-wrap">
-          <input type="password" placeholder="••••••••" required />
+          <input id="reg-password" type="password" placeholder="••••••••" required />
           <i class="fa-solid fa-lock"></i>
         </div>
       </div>
       <div class="form-group">
         <label>Confirm Password</label>
         <div class="input-wrap">
-          <input type="password" placeholder="••••••••" required />
+          <input id="reg-confirm" type="password" placeholder="••••••••" required />
           <i class="fa-solid fa-shield-halved"></i>
         </div>
       </div>
+      <div id="reg-error" class="auth-msg auth-msg-error" style="display:none"></div>
+      <div id="reg-success" class="auth-msg auth-msg-success" style="display:none"></div>
       <button type="submit" class="btn btn-primary btn-auth">
         <i class="fa-solid fa-user-plus"></i> Create Account
       </button>
@@ -805,20 +818,96 @@ async function fetchStats() {
 fetchStats();
 setInterval(fetchStats, 60_000);
 
-/* ═══ FORM SUBMIT ═════════════════════════════════════════════════ */
-function handleSubmit(e) {
+/* ═══ AUTH ════════════════════════════════════════════════════════ */
+const AUTH_BASE = 'https://commissioners-volunteer-jenny-retained.trycloudflare.com';
+
+function setMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'auth-msg auth-msg-' + type;
+  el.style.display = text ? 'block' : 'none';
+}
+
+function setBtnLoading(btn, loading, orig) {
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<i class="fa-solid fa-circle-notch fa-spin"></i> Please wait…' : orig;
+}
+
+async function handleRegister(e) {
   e.preventDefault();
-  const btn = e.target.querySelector('button[type="submit"]');
+  setMsg('reg-error', '', 'error');
+  setMsg('reg-success', '', 'success');
+
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+
+  if (password !== confirm) {
+    setMsg('reg-error', 'Passwords do not match.', 'error');
+    return;
+  }
+
+  const btn  = e.target.querySelector('button[type="submit"]');
   const orig = btn.innerHTML;
+  setBtnLoading(btn, true, orig);
 
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Connecting...';
+  try {
+    const res  = await fetch(`${AUTH_BASE}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
 
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.innerHTML = orig;
-    alert('⚙️  Backend coming soon!\n\nThis form is not yet connected to a server.');
-  }, 900);
+    if (res.ok) {
+      setMsg('reg-success', 'Account created! Please login.', 'success');
+      e.target.reset();
+      setTimeout(() => switchTab('login'), 1200);
+    } else {
+      const msg = (data.error || data.message || '').toLowerCase();
+      setMsg('reg-error',
+        msg.includes('already') ? 'Email or username already taken.' : (data.error || data.message || 'Registration failed.'),
+        'error');
+    }
+  } catch {
+    setMsg('reg-error', 'Could not reach server. Try again.', 'error');
+  } finally {
+    setBtnLoading(btn, false, orig);
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  setMsg('login-error', '', 'error');
+
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  const btn  = e.target.querySelector('button[type="submit"]');
+  const orig = btn.innerHTML;
+  setBtnLoading(btn, true, orig);
+
+  try {
+    const res  = await fetch(`${AUTH_BASE}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      localStorage.setItem('token',    data.token    || '');
+      localStorage.setItem('username', data.username || email);
+      window.location.href = 'dashboard.html';
+    } else {
+      setMsg('login-error', 'Invalid email or password.', 'error');
+    }
+  } catch {
+    setMsg('login-error', 'Could not reach server. Try again.', 'error');
+  } finally {
+    setBtnLoading(btn, false, orig);
+  }
 }
 </script>
 </body>

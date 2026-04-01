@@ -427,15 +427,16 @@
     <div class="header-title">
       <i class="fa-solid fa-gauge-high" style="margin-right:.4rem; color:var(--purple)"></i>
       Dashboard
+      <span id="header-username" style="color:var(--blue); margin-left:.5rem; font-weight:700;"></span>
     </div>
     <div class="header-right">
       <div class="refresh-indicator">
         <div class="refresh-dot"></div>
         <span id="last-updated">Fetching…</span>
       </div>
-      <a href="index.html" class="btn btn-ghost">
+      <button class="btn btn-ghost" onclick="logout()">
         <i class="fa-solid fa-right-from-bracket"></i> Logout
-      </a>
+      </button>
     </div>
   </header>
 
@@ -637,8 +638,40 @@ const pnlChart = new Chart(pnlCtx, {
   }
 });
 
-/* ═══ API ════════════════════════════════════════════════════════ */
+/* ═══ AUTH GUARD ═════════════════════════════════════════════════ */
 const BASE = 'https://commissioners-volunteer-jenny-retained.trycloudflare.com';
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('username');
+  window.location.href = 'index.html';
+}
+
+async function authGuard() {
+  const token    = localStorage.getItem('token');
+  const username = localStorage.getItem('username');
+
+  if (!token) { window.location.href = 'index.html'; return false; }
+
+  try {
+    const res = await fetch(`${BASE}/api/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) throw new Error('invalid');
+    const el = document.getElementById('header-username');
+    if (el && username) el.textContent = '— ' + username;
+    return true;
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    window.location.href = 'index.html';
+    return false;
+  }
+}
+
+/* ═══ API ════════════════════════════════════════════════════════ */
 
 async function fetchStats() {
   try {
@@ -737,8 +770,11 @@ async function fetchPnlHistory() {
 
 function refresh() { fetchStats(); fetchTrades(); fetchPnlHistory(); }
 
-refresh();
-setInterval(refresh, 60_000);
+authGuard().then(ok => {
+  if (!ok) return;
+  refresh();
+  setInterval(refresh, 60_000);
+});
 </script>
 </body>
 </html>
